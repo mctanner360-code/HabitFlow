@@ -2,17 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { getCurrentUser, logoutUser } from "~/lib/auth-fns";
 import { getHabits, checkInHabit, uncheckHabit } from "~/lib/habits";
-
-const BADGE_EMOJIS: Record<number, string> = {
-  3: "🥉",
-  7: "🥈",
-  14: "🥇",
-  21: "🌟",
-  30: "🔥",
-  60: "💪",
-  90: "🏆",
-  365: "👑",
-};
+import { getPendingReminders, ReminderBanner } from "~/components/ReminderBanner";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
@@ -22,7 +12,7 @@ function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [habits, setHabits] = useState<any[]>([]);
-  const [badges, setBadges] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
 
@@ -36,8 +26,12 @@ function DashboardPage() {
         }
         setUser(userData);
 
-        const habitsData = await getHabits();
+        const [habitsData, remindersData] = await Promise.all([
+          getHabits(),
+          getPendingReminders(),
+        ]);
         setHabits(habitsData);
+        setReminders(remindersData);
       } catch {
         navigate({ to: "/login" });
       } finally {
@@ -73,6 +67,10 @@ function DashboardPage() {
     }
   };
 
+  const handleDismissReminder = (id: string) => {
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+  };
+
   const handleLogout = async () => {
     try {
       await logoutUser();
@@ -96,11 +94,48 @@ function DashboardPage() {
   if (!user) return null;
 
   const totalStreak = habits.reduce((max, h) => Math.max(max, h.currentStreak), 0);
-  const totalBadges = badges.length;
   const completedToday = habits.filter((h) => h.checkedInToday).length;
+  const isTrialing = user.subscriptionStatus === "trial";
+  const trialDaysLeft = Math.max(0, Math.ceil((new Date(user.trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Reminder Banner */}
+      <ReminderBanner reminders={reminders} onDismiss={handleDismissReminder} />
+
+      {/* Trial Banner */}
+      {isTrialing && trialDaysLeft <= 3 && trialDaysLeft > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-amber-900 dark:text-amber-100">
+              ⏰ Your free trial ends in {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""}.
+            </p>
+            <Link
+              to="/subscribe"
+              className="text-sm font-medium text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+            >
+              Subscribe now →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {isTrialing && trialDaysLeft === 0 && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-red-900 dark:text-red-100">
+              ⚠️ Your free trial has ended. Subscribe to continue tracking.
+            </p>
+            <Link
+              to="/subscribe"
+              className="text-sm font-medium text-red-700 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+            >
+              Subscribe now →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -108,17 +143,31 @@ function DashboardPage() {
             Welcome back, {user.name}! 🔥
           </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {user.subscriptionStatus === "trial"
-              ? `Your free trial ends on ${new Date(user.trialEnd).toLocaleDateString()}`
-              : "Active subscriber"}
+            {isTrialing
+              ? `Free trial: ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} remaining`
+              : user.subscriptionStatus === "active"
+                ? "Active subscriber"
+                : "Subscription needed"}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            to="/badges"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+          >
+            🏆 Badges
+          </Link>
           <Link
             to="/reports"
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
           >
             📊 Reports
+          </Link>
+          <Link
+            to="/subscribe"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+          >
+            💳 Subscribe
           </Link>
           <button
             onClick={handleLogout}
@@ -132,12 +181,10 @@ function DashboardPage() {
       {/* Quick stats */}
       <div className="grid gap-6 sm:grid-cols-3">
         <StatCard icon="🔥" title="Best streak" value={`${totalStreak} days`} />
-        <StatCard icon="🏆" title="Badges earned" value={`${totalBadges}`} />
-        <StatCard
-          icon="📊"
-          title="Today's progress"
-          value={`${completedToday}/${habits.length}`}
-        />
+        <StatCard icon="📊" title="Today's progress" value={`${completedToday}/${habits.length}`} />
+        <Link to="/badges" className="block">
+          <StatCard icon="🏆" title="Badges" value={`${habits.length > 0 ? "Active" : "0 earned"}`} />
+        </Link>
       </div>
 
       {/* Habits Section */}
@@ -218,6 +265,9 @@ function HabitCard({
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 🔥 {streakText}
               </span>
+              {habit.reminderTime && (
+                <span className="text-xs text-amber-500">🔔 {String(habit.reminderTime).substring(0, 5)}</span>
+              )}
               {habit.description && (
                 <span className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[200px]">
                   {habit.description}
