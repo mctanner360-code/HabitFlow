@@ -4,20 +4,19 @@ import {
   hashPassword,
   verifyPassword,
   createToken,
-  createAuthCookie,
-  createLogoutCookie,
   getUserFromRequest,
 } from "~/lib/auth";
+
+const COOKIE_NAME = "habitforge_token";
+
+function makeCookie(token: string, maxAge: number): string {
+  return `${COOKIE_NAME}=${token}; Path=/; SameSite=Lax; Max-Age=${maxAge}; HttpOnly`;
+}
 
 interface SignupInput {
   email: string;
   password: string;
   name: string;
-}
-
-interface LoginInput {
-  email: string;
-  password: string;
 }
 
 export const signupUser = createServerFn({ method: "POST" })
@@ -36,14 +35,12 @@ export const signupUser = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const db = sql();
 
-    // Check if user already exists
     const existing = await db`SELECT id FROM users WHERE email = ${data.email}`;
     if (existing.length > 0) {
       throw new Error("An account with this email already exists");
     }
 
     const passwordHash = await hashPassword(data.password);
-
     const result = await db`
       INSERT INTO users (email, password_hash, name)
       VALUES (${data.email}, ${passwordHash}, ${data.name})
@@ -52,7 +49,7 @@ export const signupUser = createServerFn({ method: "POST" })
 
     const user = result[0];
     const token = createToken({ userId: user.id, email: user.email });
-    const cookie = createAuthCookie(token);
+    const cookie = makeCookie(token, 7 * 24 * 60 * 60);
 
     return {
       user: {
@@ -63,9 +60,14 @@ export const signupUser = createServerFn({ method: "POST" })
         trialEnd: String(user.trial_end),
         subscriptionStatus: user.subscription_status,
       },
-      cookie,
+      _cookie: cookie,
     };
   });
+
+interface LoginInput {
+  email: string;
+  password: string;
+}
 
 export const loginUser = createServerFn({ method: "POST" })
   .validator((data: LoginInput) => {
@@ -88,13 +90,12 @@ export const loginUser = createServerFn({ method: "POST" })
 
     const user = result[0];
     const valid = await verifyPassword(data.password, user.password_hash);
-
     if (!valid) {
       throw new Error("Invalid email or password");
     }
 
     const token = createToken({ userId: user.id, email: user.email });
-    const cookie = createAuthCookie(token);
+    const cookie = makeCookie(token, 7 * 24 * 60 * 60);
 
     return {
       user: {
@@ -105,19 +106,17 @@ export const loginUser = createServerFn({ method: "POST" })
         trialEnd: String(user.trial_end),
         subscriptionStatus: user.subscription_status,
       },
-      cookie,
+      _cookie: cookie,
     };
   });
 
 export const logoutUser = createServerFn({ method: "POST" }).handler(async () => {
-  return { cookie: createLogoutCookie() };
+  return { _cookie: makeCookie("", 0) };
 });
 
 export const getCurrentUser = createServerFn({ method: "GET" }).handler(async ({ request }) => {
   const payload = getUserFromRequest(request);
-  if (!payload) {
-    return null;
-  }
+  if (!payload) return null;
 
   try {
     const db = sql();

@@ -73,7 +73,10 @@ function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      await logoutUser();
+      const result = await logoutUser();
+      if (result._cookie) {
+        document.cookie = result._cookie;
+      }
       navigate({ to: "/" });
     } catch {
       // ignore

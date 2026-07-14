@@ -25,7 +25,13 @@ function SignupPage() {
     setLoading(true);
 
     try {
-      await signupUser({ data: { email, password, name } });
+      const result = await signupUser({ data: { email, password, name } });
+
+      // Set the auth cookie from the server response
+      if (result._cookie) {
+        document.cookie = result._cookie;
+      }
+
       setSignedUp(true);
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");
