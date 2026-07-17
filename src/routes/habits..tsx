@@ -20,7 +20,7 @@ function EditHabitPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [frequency, setFrequency] = useState<"daily" | "weekly" | "custom">("daily");
+  const [frequency, setFrequency] = useState<"daily" | "weekday" | "weekly" | "custom">("daily");
   const [targetCount, setTargetCount] = useState(1);
   const [color, setColor] = useState(HABIT_COLORS[0]);
   const [icon, setIcon] = useState(HABIT_ICONS[0]);
@@ -160,8 +160,8 @@ function EditHabitPage() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Frequency
           </label>
-          <div className="mt-2 grid grid-cols-3 gap-3">
-            {(["daily", "weekly", "custom"] as const).map((freq) => (
+          <div className="mt-2 grid grid-cols-4 gap-3">
+            {(["daily", "weekday", "weekly", "custom"] as const).map((freq) => (
               <button
                 key={freq}
                 type="button"

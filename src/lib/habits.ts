@@ -5,7 +5,7 @@ import { getUserFromRequest } from "~/lib/auth";
 interface CreateHabitInput {
   name: string;
   description?: string;
-  frequency: "daily" | "weekly" | "custom";
+  frequency: "daily" | "weekday" | "weekly" | "custom";
   targetCount: number;
   reminderTime?: string;
   color?: string;
@@ -16,7 +16,7 @@ interface UpdateHabitInput {
   id: string;
   name?: string;
   description?: string;
-  frequency?: "daily" | "weekly" | "custom";
+  frequency?: "daily" | "weekday" | "weekly" | "custom";
   targetCount?: number;
   reminderTime?: string | null;
   color?: string;
@@ -118,47 +118,53 @@ export const updateHabit = createServerFn({ method: "POST" })
     if (!user) throw new Error("Not authenticated");
 
     const db = sql();
-    const updates: string[] = [];
-    const values: any[] = [];
+    const setClauses: string[] = [];
+    const params: any[] = [];
+    let paramIdx = 0;
 
     if (data.name !== undefined) {
-      updates.push("name = $2");
-      values.push(data.name);
+      setClauses.push("name = $" + (++paramIdx));
+      params.push(data.name);
     }
     if (data.description !== undefined) {
-      updates.push("description = $3");
-      values.push(data.description);
+      setClauses.push("description = $" + (++paramIdx));
+      params.push(data.description);
     }
     if (data.frequency !== undefined) {
-      updates.push("frequency = $4");
-      values.push(data.frequency);
+      setClauses.push("frequency = $" + (++paramIdx));
+      params.push(data.frequency);
     }
     if (data.targetCount !== undefined) {
-      updates.push("target_count = $5");
-      values.push(data.targetCount);
+      setClauses.push("target_count = $" + (++paramIdx));
+      params.push(data.targetCount);
     }
     if (data.reminderTime !== undefined) {
-      updates.push("reminder_time = $6");
-      values.push(data.reminderTime);
+      setClauses.push("reminder_time = $" + (++paramIdx));
+      params.push(data.reminderTime);
     }
     if (data.color !== undefined) {
-      updates.push("color = $7");
-      values.push(data.color);
+      setClauses.push("color = $" + (++paramIdx));
+      params.push(data.color);
     }
     if (data.icon !== undefined) {
-      updates.push("icon = $8");
-      values.push(data.icon);
+      setClauses.push("icon = $" + (++paramIdx));
+      params.push(data.icon);
     }
     if (data.archived !== undefined) {
-      updates.push("archived = $9");
-      values.push(data.archived);
+      setClauses.push("archived = $" + (++paramIdx));
+      params.push(data.archived);
     }
 
-    if (updates.length > 0) {
-      await db`
-        UPDATE habits SET ${updates.join(", ")}
-        WHERE id = ${data.id} AND user_id = ${user.userId};
-      `;
+    if (setClauses.length > 0) {
+      params.push(data.id);
+      const idParam = ++paramIdx;
+      params.push(user.userId);
+      const userIdParam = ++paramIdx;
+
+      await db(
+        "UPDATE habits SET " + setClauses.join(", ") + " WHERE id = $" + idParam + " AND user_id = $" + userIdParam,
+        params,
+      );
     }
 
     return { success: true };

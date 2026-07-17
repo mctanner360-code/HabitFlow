@@ -121,7 +121,7 @@ function ReportsPage() {
                           {habit.name}
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {habit.frequency} &bull; {habit.currentStreak} day streak
+                          {habit.frequency === "weekday" ? "Weekdays" : habit.frequency} &bull; {habit.currentStreak} day streak
                         </p>
                       </div>
                     </div>

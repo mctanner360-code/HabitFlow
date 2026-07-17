@@ -20,12 +20,9 @@ function LoginPage() {
 
     try {
       const result = await loginUser({ data: { email, password } });
-
-      // Set the auth cookie from the server response
       if (result._cookie) {
         document.cookie = result._cookie;
       }
-
       // Redirect to dashboard
       navigate({ to: "/dashboard" });
     } catch (err: any) {

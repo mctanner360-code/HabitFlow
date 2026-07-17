@@ -31,7 +31,7 @@ export const runMigration = createServerFn({ method: "POST" }).handler(async () 
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       description TEXT DEFAULT '',
-      frequency TEXT NOT NULL DEFAULT 'daily' CHECK (frequency IN ('daily', 'weekly', 'custom')),
+      frequency TEXT NOT NULL DEFAULT 'daily' CHECK (frequency IN ('daily', 'weekday', 'weekly', 'custom')),
       target_count INTEGER NOT NULL DEFAULT 1,
       reminder_time TIME,
       color TEXT DEFAULT '#6366f1',

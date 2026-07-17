@@ -261,7 +261,7 @@ function HabitCard({
             <div className="flex items-center gap-2">
               <h3 className="font-medium text-gray-900 dark:text-gray-100">{habit.name}</h3>
               <span className="text-xs text-gray-400 dark:text-gray-500 capitalize">
-                {habit.frequency}
+                {habit.frequency === "weekday" ? "Weekdays" : habit.frequency}
               </span>
             </div>
             <div className="flex items-center gap-3 mt-1">

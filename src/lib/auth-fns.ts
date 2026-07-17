@@ -9,8 +9,12 @@ import {
 
 const COOKIE_NAME = "habitforge_token";
 
-function makeCookie(token: string, maxAge: number): string {
-  return `${COOKIE_NAME}=${token}; Path=/; SameSite=Lax; Max-Age=${maxAge}; HttpOnly`;
+function makeCookieValue(token: string, maxAge: number): string {
+  return `${COOKIE_NAME}=${token}; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+function makeLogoutCookieValue(): string {
+  return `${COOKIE_NAME}=; Path=/; SameSite=Lax; Max-Age=0`;
 }
 
 interface SignupInput {
@@ -49,7 +53,7 @@ export const signupUser = createServerFn({ method: "POST" })
 
     const user = result[0];
     const token = createToken({ userId: user.id, email: user.email });
-    const cookie = makeCookie(token, 7 * 24 * 60 * 60);
+    const cookie = makeCookieValue(token, 7 * 24 * 60 * 60);
 
     return {
       user: {
@@ -95,7 +99,7 @@ export const loginUser = createServerFn({ method: "POST" })
     }
 
     const token = createToken({ userId: user.id, email: user.email });
-    const cookie = makeCookie(token, 7 * 24 * 60 * 60);
+    const cookie = makeCookieValue(token, 7 * 24 * 60 * 60);
 
     return {
       user: {
@@ -111,7 +115,7 @@ export const loginUser = createServerFn({ method: "POST" })
   });
 
 export const logoutUser = createServerFn({ method: "POST" }).handler(async () => {
-  return { _cookie: makeCookie("", 0) };
+  return { _cookie: makeLogoutCookieValue() };
 });
 
 export const getCurrentUser = createServerFn({ method: "GET" }).handler(async ({ request }) => {
